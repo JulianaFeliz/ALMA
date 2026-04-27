@@ -1,0 +1,46 @@
+process MAFFT_ALIGN {
+    tag "$meta.id"
+    cpus 8
+    memory '16 GB'
+
+    container 'https://depot.galaxyproject.org/singularity/mafft:7.525--h031d066_1'
+
+    input:
+    tuple val(meta), path(query_seqs)
+    path reference_seqs
+
+    output:
+    tuple val(meta), path("${meta.id}.aligned.fasta"), emit: alignment
+    path "versions.yml", emit: versions
+
+    script:
+    """
+    export TMPDIR=\$PWD
+    export TEMP=\$PWD
+    export TMP=\$PWD
+
+    # 1. Limpar e renomear APENAS as amostras da UFRN (Queries)
+    # Remove linhas vazias e renomeia para >Q_1, >Q_2 para evitar conflitos
+    cat ${query_seqs} | tr -d '\\r' | sed '/^\$/d' | \\
+    awk '/^>/ {printf(">Q_%d\\n", ++i); next} {print}' > clean_query.fasta
+
+    # 2. Limpar a Referencia (Sem alterar os nomes originais)
+    cat ${reference_seqs} | tr -d '\\r' | sed '/^\$/d' > clean_ref.fasta
+
+    # 3. ALINHAMENTO INTELIGENTE (--add)
+    # Em vez de alinhar do zero, ele apenas insere as queries na referencia.
+    # O uso de RAM e Disco despenca, e o erro njob=0 desaparece.
+    mafft --thread ${task.cpus} \\
+          --anysymbol \\
+          --memsavetree \\
+          --add clean_query.fasta \\
+          --reorder \\
+          clean_ref.fasta > ${meta.id}.aligned.fasta
+
+    # 4. Versao
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        mafft: \$(mafft --version 2>&1 | sed 's/^v//')
+    END_VERSIONS
+    """
+}

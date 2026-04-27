@@ -1,0 +1,14 @@
+# Nextflow e arquivos de cache
+work/
+.nextflow/
+.nextflow.log*
+
+# Dados brutos e pesados
+*.fastq
+*.fasta
+*.fq
+*.gz
+*.zip
+
+# Saídas de análise pesadas
+results/

@@ -1,0 +1,5 @@
+task_id	hash	native_id	name	status	exit	submit	duration	realtime	%cpu	peak_rss	peak_vmem	rchar	wchar
+1	8d/ae731a	3499080	MOTHUR_MAKE_CONTIGS (UFRN-D1)	FAILED	1	2026-04-18 19:21:27.193	481ms	382ms	-	-	-	-	-
+3	eb/bd618e	3499070	MOTHUR_MAKE_CONTIGS (UFRN-D3)	FAILED	1	2026-04-18 19:21:27.176	492ms	475ms	-	-	-	-	-
+6	c8/eb87db	3499210	MOTHUR_MAKE_CONTIGS (UFRN-P1)	FAILED	1	2026-04-18 19:21:27.693	251ms	197ms	-	-	-	-	-
+5	06/e5260e	3499202	MOTHUR_MAKE_CONTIGS (UFRN-P2)	FAILED	1	2026-04-18 19:21:27.680	298ms	233ms	-	-	-	-	-
