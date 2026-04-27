@@ -3,6 +3,7 @@ process RAXML_EPA {
     cpus 8
     memory '16 GB'
 
+    // Link do Galaxy Project
     container 'https://depot.galaxyproject.org/singularity/raxml-ng:1.2.2--h6747034_1'
 
 

@@ -20,7 +20,7 @@ nextflow.enable.dsl = 2
 // Input parameters
 params.input              = null  // CSV samplesheet OR directory with FASTQ files
 params.input_dir          = null  // Alternative: directory with *_R{1,2}.fastq.gz files
-params.input_pattern      = '*_R{1,2}_001.fastq'  // Pattern for paired-end files
+params.input_pattern      = '*_R{1,2}_001.fastq.gz'  // Pattern for paired-end files
 params.outdir             = './results'
 
 // Reference databases

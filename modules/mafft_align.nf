@@ -1,8 +1,7 @@
 process MAFFT_ALIGN {
     tag "$meta.id"
-    cpus 8
-    memory '16 GB'
-
+        
+    // Link do Galaxy Project
     container 'https://depot.galaxyproject.org/singularity/mafft:7.525--h031d066_1'
 
     input:

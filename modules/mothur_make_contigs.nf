@@ -2,7 +2,8 @@ process MOTHUR_MAKE_CONTIGS {
     tag "$meta.id"
     label 'process_medium'
     
-    container '/home/jrbfelix/ALMA/glomeromycota-pipeline/mothur_v1.48.sif'
+    // Link do Galaxy Project
+    container 'https://depot.galaxyproject.org/singularity/mothur:1.48.0--hb64bf22_1'
     
     input:
     tuple val(meta), path(fastq_1), path(fastq_2)
