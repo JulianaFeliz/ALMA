@@ -4,8 +4,9 @@ process MOTHUR_CLASSIFY_SEQS {
 
     publishDir "${params.outdir}/mothur/taxonomy", mode: 'copy'
 
-    container '/home/jrbfelix/ALMA/glomeromycota-pipeline/mothur_v1.48.sif'
-
+    // Link do Galaxy Project
+    container 'https://depot.galaxyproject.org/singularity/mothur:1.48.0--hb64bf22_1'
+    
     input:
     tuple val(meta), path(fasta), path(count)
     path reference

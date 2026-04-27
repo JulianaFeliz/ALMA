@@ -4,8 +4,8 @@ process MOTHUR_CLUSTER {
 
     publishDir "${params.outdir}/mothur/cluster", mode: 'copy'
 
-    conda 'bioconda::mothur=1.48.0'
-    container '/home/jrbfelix/ALMA/glomeromycota-pipeline/mothur_v1.48.sif'
+    // Link do Galaxy Project
+    container 'https://depot.galaxyproject.org/singularity/mothur:1.48.0--hb64bf22_1'
 
     input:
     tuple val(meta), path(fasta), path(count_table)

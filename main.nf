@@ -2,9 +2,8 @@
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Glomeromycota LSU rDNA Analysis Pipeline
+    ALMA - AMF LSU METABARCODING ANALYSIS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Converts Mothur-based workflow for Glomeromycota sequence analysis
     Includes: Quality control, taxonomic classification, alignment, phylogenetic placement
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
@@ -20,26 +19,29 @@ nextflow.enable.dsl = 2
 // Input parameters
 params.input              = null  // CSV samplesheet OR directory with FASTQ files
 params.input_dir          = null  // Alternative: directory with *_R{1,2}.fastq.gz files
-params.input_pattern      = '*_R{1,2}_001.fastq'  // Pattern for paired-end files
+params.input_pattern      = '*_R{1,2}_001.fastq.gz'  // Pattern for paired-end files
 params.outdir             = './results'
 
 // Reference databases
 params.reference_db       = null  // Mothur-formatted reference database
 params.taxonomy_db        = null  // Taxonomy file for classification
 params.alignment_ref      = null  // Reference alignment file
+params.reference_mafrax   = null  // Reference alignmente for mafft and Raxml (without problematic sequences)
 params.phylo_tree         = null  // Reference phylogenetic tree
-
+params.taxonomy_ALMA      = null  // Taxonomy dictionary for GAPPA
 
 // Mothur parameters
-params.min_length         = 300
-params.max_length         = 580
-params.max_ambig          = 0
-params.max_homop          = 8
+params.min_length         = 200
+params.max_length         = 600
+params.max_ambig          = 18
+params.max_homop          = 22
 params.classify_cutoff    = 90
 params.align_start        = 4
-params.align_end          = 561
+params.align_end          = 530
 params.cluster_cutoff     = 0.02
 params.cluster_method     = 'dgc'
+params.precluster_diffs = 3
+params.cutoff           = 1  // For split.abund
 
 // Post-Mothur parameters
 params.gappa_lwr_threshold = 0.9
@@ -54,7 +56,7 @@ params.help = false
 def helpMessage() {
     log.info"""
     =========================================
-     Glomeromycota LSU rDNA Analysis Pipeline
+      ALMA - AMF LSU METABARCODING ANALYSIS
     =========================================
     
     Usage (Option 1 - CSV):
@@ -71,7 +73,8 @@ def helpMessage() {
       
       --reference_db       Mothur-formatted reference database (FASTA)
       --taxonomy_db        Taxonomy file for classification
-      --alignment_ref      Reference alignment for MAFFT
+      --alignment_ref      Reference alignment for Mothur
+      --reference_mafrax   Reference alignmente for Mafft and RaxML      
       --phylo_tree         Reference phylogenetic tree for RAxML-EPA
       
     
@@ -127,14 +130,15 @@ include { MOTHUR_MAKE_CONTIGS } from './modules/mothur_make_contigs'
 include { MOTHUR_SCREEN_SEQS as MOTHUR_SCREEN_SEQS_1 } from './modules/mothur_screen_seqs'
 include { MOTHUR_UNIQUE_SEQS as MOTHUR_UNIQUE_SEQS_1 } from './modules/mothur_unique_seqs'
 include { MOTHUR_COUNT_SEQS } from './modules/mothur_count_seqs'
-include { MOTHUR_COUNT_SEQS as MOTHUR_COUNT_SEQS_2 } from './modules/mothur_count_seqs'
+//include { MOTHUR_COUNT_SEQS as MOTHUR_COUNT_SEQS_2 } from './modules/mothur_count_seqs'
 include { MOTHUR_CLASSIFY_SEQS } from './modules/mothur_classify_seqs'
 include { MOTHUR_GET_LINEAGE } from './modules/mothur_get_lineage'
 include { MOTHUR_ALIGN_SEQS } from './modules/mothur_align_seqs'
-include { MOTHUR_SCREEN_SEQS as MOTHUR_SCREEN_SEQS_2 } from './modules/mothur_screen_seqs'
+include { MOTHUR_SCREEN_SEQS_2 } from './modules/mothur_screen_seqs_2'
 include { MOTHUR_FILTER_SEQS } from './modules/mothur_filter_seqs'
 include { MOTHUR_UNIQUE_SEQS as MOTHUR_UNIQUE_SEQS_2 } from './modules/mothur_unique_seqs'
 include { MOTHUR_PRE_CLUSTER } from './modules/mothur_pre_cluster'
+include { MOTHUR_SPLIT_ABUND } from './modules/mothur_split_abund'
 include { MOTHUR_CHIMERA_VSEARCH } from './modules/mothur_chimera_vsearch'
 include { MOTHUR_REMOVE_SEQS } from './modules/mothur_remove_seqs'
 include { MOTHUR_CLUSTER } from './modules/mothur_cluster'
@@ -143,7 +147,8 @@ include { MOTHUR_GET_OTUREP } from './modules/mothur_get_oturep'
 include { MAFFT_ALIGN } from './modules/mafft_align'
 include { RAXML_EPA } from './modules/raxml_epa'
 include { GAPPA_ASSIGN } from './modules/gappa_assign'
-
+include { GAPPA_MERGE } from './modules/gappa_merge'
+include { GAPPA_TABLE } from './modules/gappa_table.nf'
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     MAIN WORKFLOW
@@ -233,43 +238,38 @@ workflow {
         MOTHUR_GET_LINEAGE.out.fasta,
         file(params.alignment_ref)
     )
-    
+       
+    //join the count table and aligned fasta
+    ch_aligned_sync = MOTHUR_ALIGN_SEQS.out.aligned.join(MOTHUR_GET_LINEAGE.out.count, by: 0)
     // Screen aligned sequences
-    MOTHUR_SCREEN_SEQS_2(
-        MOTHUR_ALIGN_SEQS.out.aligned,
-        params.align_start,
-        params.align_end,
-        params.max_ambig,
-        params.max_homop
-    )
     
+    MOTHUR_SCREEN_SEQS_2(
+        ch_aligned_sync,
+        params.align_start,
+        params.align_end
+    )
+        
     // Filter alignment
     MOTHUR_FILTER_SEQS(MOTHUR_SCREEN_SEQS_2.out.seqs)
     
     // Second dereplication
     MOTHUR_UNIQUE_SEQS_2(MOTHUR_FILTER_SEQS.out.filtered)
-    
-    // Update count table after second dereplication
-    MOTHUR_COUNT_SEQS_2(
-        MOTHUR_UNIQUE_SEQS_2.out.fasta,
-        MOTHUR_UNIQUE_SEQS_2.out.names
-    )
 
-    // Pre-cluster sequences with synchronized count table
-    MOTHUR_PRE_CLUSTER(
-        MOTHUR_UNIQUE_SEQS_2.out.fasta.join(MOTHUR_COUNT_SEQS_2.out.count, by: 0)
-    )
-    
+    // The Pre-Cluster Detox
+    precluster_sync = MOTHUR_UNIQUE_SEQS_2.out.fasta.join(MOTHUR_UNIQUE_SEQS_2.out.names, by: 0)
+    MOTHUR_PRE_CLUSTER(precluster_sync)
+
+    //The Split Abund Cleanse (Removing Singletons)
+    split_abund_sync = MOTHUR_PRE_CLUSTER.out.fasta.join(MOTHUR_PRE_CLUSTER.out.count, by: 0)
+    MOTHUR_SPLIT_ABUND(split_abund_sync)
+
     // Chimera detection (optional)
-    chimera_sync = MOTHUR_PRE_CLUSTER.out.fasta.join(MOTHUR_PRE_CLUSTER.out.count, by: 0)
+        chimera_sync = MOTHUR_SPLIT_ABUND.out.fasta.join(MOTHUR_SPLIT_ABUND.out.count, by: 0)
 
     if (!params.skip_chimera_check) {
-        MOTHUR_CHIMERA_VSEARCH(
-            chimera_sync.map { meta, fasta, count -> [meta, fasta] },
-            chimera_sync.map { meta, fasta, count -> [meta, count] }
-        )
+        
+        MOTHUR_CHIMERA_VSEARCH(chimera_sync)
 
-        // Sincroniza os arquivos originais com o arquivo de quimeras gerado pelo VSEARCH
         remove_sync = chimera_sync.join(MOTHUR_CHIMERA_VSEARCH.out.accnos, by: 0)
 
         MOTHUR_REMOVE_SEQS(
@@ -278,18 +278,19 @@ workflow {
 
         cluster_input_fasta = MOTHUR_REMOVE_SEQS.out.fasta
         cluster_input_count = MOTHUR_REMOVE_SEQS.out.count
+        
     } else {
-        cluster_input_fasta = MOTHUR_PRE_CLUSTER.out.fasta
-        cluster_input_count = MOTHUR_PRE_CLUSTER.out.count
-    }
-
+        // If skipping chimera, grab straight from SPLIT_ABUND
+        cluster_input_fasta = MOTHUR_SPLIT_ABUND.out.fasta
+        cluster_input_count = MOTHUR_SPLIT_ABUND.out.count
+    }    
     // Cluster sequences
     MOTHUR_CLUSTER(
         cluster_input_fasta.join(cluster_input_count, by: 0),
         params.cluster_cutoff,
         params.cluster_method
-    )    
-    
+    )
+
     // Make OTU table
     shared_sync = MOTHUR_CLUSTER.out.list.join(cluster_input_count, by: 0)
 
@@ -310,22 +311,35 @@ workflow {
         // Align to reference with MAFFT
         MAFFT_ALIGN(
             MOTHUR_GET_OTUREP.out.rep_seqs,
-            file(params.alignment_ref)
+            file(params.reference_mafrax)
         )
         
         // Phylogenetic placement with RAxML-EPA
         RAXML_EPA(
             MAFFT_ALIGN.out.alignment,
             file(params.phylo_tree),
-            file(params.alignment_ref)
+            file(params.reference_mafrax)
         )
         
         // Taxonomic assignment with GAPPA
         GAPPA_ASSIGN(
             RAXML_EPA.out.jplace,
-            file(params.taxonomy_db),
+            file(params.taxonomy_ALMA),
             params.gappa_lwr_threshold
         )
+	// Coleta todas as árvores que saíram do RAxML
+        all_jplaces = RAXML_EPA.out.jplace.map { meta, jplace -> jplace }.collect()
+
+        // Merge all individual jplace of each sample into one jplace
+        GAPPA_MERGE(all_jplaces)
+
+        // Table abundance count for ecological analysis
+        
+        all_per_query = GAPPA_ASSIGN.out.per_query.map { meta, file -> file }.collect()
+        all_shared = MOTHUR_MAKE_SHARED.out.shared.map { meta, file -> file }.collect()
+        GAPPA_TABLE(all_per_query, all_shared)
+
+
     }
     
     //

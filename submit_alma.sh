@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=ALMA_Analysis        # Nome do trabalho no cluster
-#SBATCH --output=ALMA_out_%j.log        # Arquivo de log (saída)
-#SBATCH --error=ALMA_err_%j.log         # Arquivo de erro
+#SBATCH --output=ALMAout_%j.log        # Arquivo de log (saída)
+#SBATCH --error=ALMAerr_%j.log         # Arquivo de erro
 #SBATCH --nodes=1                       # Usar 1 nó do supercomputador
 #SBATCH --cpus-per-task=8              # Quantidade de CPUs (Nextflow vai dividir isso)
 #SBATCH --mem=32G                       # Memória RAM total (ajuste se necessário)
-#SBATCH --time=6:00:00                 # Tempo máximo de execução (24 horas)
-#SBATCH --partition=amd-512               # Nome da fila (confirme se é 'batch' no seu cluster)
+#SBATCH --time=19:00:00                 # Tempo máximo de execução (24 horas)
+#SBATCH --partition=intel-128               # Nome da fila (confirme se é 'batch' no seu cluster)
 
 # --- Notificações por E-mail ---
 #SBATCH --mail-user=dearfelixx@gmail.com
@@ -21,7 +21,7 @@ export PATH=$HOME:$PATH
 #---- 2. Caminhos (Ajuste aqui)
 # Definimos onde está o executável e onde está o pipeline
 NEXTFLOW_BIN=$HOME/nextflow
-PIPELINE_DIR=$HOME/ALMA/glomeromycota-pipeline
+PIPELINE_DIR=$HOME/ALMA
 
 
 # --- 3. Comando de Execução do ALMA ---

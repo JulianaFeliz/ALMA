@@ -1,15 +1,15 @@
 process MOTHUR_CHIMERA_VSEARCH {
-    tag "${meta.id}"
+    tag "$meta.id"
     label 'process_medium'
 
-    container '/home/jrbfelix/ALMA/glomeromycota-pipeline/mothur_v1.48.sif'
+    container 'https://depot.galaxyproject.org/singularity/mothur:1.48.0--hb64bf22_1'
 
     input:
-    tuple val(meta), path(fasta)
-    tuple val(meta2), path(count)
+    // 💅 DIVA FIX: One single pair of hands to catch the VIP package!
+    tuple val(meta), path(fasta), path(count)
 
     output:
-    tuple val(meta), path("${meta.id}.denovo.vsearch.chimeras"), emit: chimeras
+    tuple val(meta), path("${meta.id}.denovo.vsearch.chimeras"), emit: chimeras, optional: true
     tuple val(meta), path("${meta.id}.denovo.vsearch.accnos"), emit: accnos
     path "versions.yml", emit: versions
 
@@ -17,19 +17,23 @@ process MOTHUR_CHIMERA_VSEARCH {
     """
     mothur "#chimera.vsearch(fasta=${fasta}, count=${count}, dereplicate=T, processors=${task.cpus})"
 
-    # Rename output files - only if needed
-    if [ -f *.denovo.vsearch.chimeras ] && [ ! -f ${meta.id}.denovo.vsearch.chimeras ]; then
-        mv *.denovo.vsearch.chimeras ${meta.id}.denovo.vsearch.chimeras
+    # Rename chimeras output if it exists
+    if ls *.denovo.vsearch.chimeras 1> /dev/null 2>&1; then
+        mv *.denovo.vsearch.chimeras "${meta.id}.denovo.vsearch.chimeras"
     fi
-    
-    if [ -f *.denovo.vsearch.accnos ] && [ ! -f ${meta.id}.denovo.vsearch.accnos ]; then
-        mv *.denovo.vsearch.accnos ${meta.id}.denovo.vsearch.accnos
+
+    # DIVA ANTI-CRASH MECHANISM:
+    # If no chimeras were found, Mothur doesn't create an accnos file.
+    # We create an empty one so Nextflow doesn't panic and crash.
+    if ls *.denovo.vsearch.accnos 1> /dev/null 2>&1; then
+        mv *.denovo.vsearch.accnos "${meta.id}.denovo.vsearch.accnos"
+    else
+        touch "${meta.id}.denovo.vsearch.accnos"
     fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        mothur: \$(mothur -v 2>&1 | head -n 1 | sed 's/.*v\\.//; s/ .*//')
-        vsearch: \$(vsearch --version 2>&1 | head -n 1 | sed 's/vsearch //g' | sed 's/,.*//')
+        mothur: \$(mothur --version 2>&1 | sed 's/^.*v\\.//; s/\\..*\$//')
     END_VERSIONS
     """
 }
