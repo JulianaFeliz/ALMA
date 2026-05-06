@@ -4,7 +4,7 @@ A reproducible and scalable **Nextflow DSL2** pipeline for analyzing arbuscular 
 
 * **🧬 739** High-quality sequences
 * **🍄 244** Species
-* * ** 🫆 57 Genera: 
+* **🫆 57** Genera: 
    *Acaulospora, Albahypha, Albocarpum, Alborhynchus, Ambispora, Andinospora, Archaeospora, Blaszkowskia, Bulbospora, Cetraspora, Complexispora, Corymbiglomus,       Dentiscutata, Desertispora, Diversispora, Dominikia, Entrophospora, Epigeocarpum, Funneliformis, Funneliglomus, Fuscutata, Geosiphon, Gigaspora, Glomus,           Halonatospora, Innospora, Intraornatospora, Kamienskia, Macrodominikia, Melanocarpum, Microdominikia, Microkamienskia, Microviscospora, Nanoglomus, Oehlia,        Orbispora, Orientoglomus, Otospora, Pacispora, Palaeospora, Paracorymbiglomus, Paradentiscutata, Paraglomus, Pervetustus, Polonospora, Racocetra, Redeckera,       Rhizoglomus, Sacculospora, Sclerocarpum, Sclerocystis, Scutellospora, Septoglomus, Sieverdingia, Silvaspora, Tricispora, Viscospora.*
 * **🧩 25** Families *(representing all known AMF families)*
 * **👑 9** Orders *(representing all known AMF orders)*: 
