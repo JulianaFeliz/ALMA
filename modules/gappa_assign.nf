@@ -28,9 +28,9 @@ process GAPPA_ASSIGN {
         --krona \\
         --sativa \\
         --best-hit \\
-        --distribution-ratio ${lwr_threshold} \\
+        --consensus-thresh 0.5 \\
+        --resolve-missing-paths \\
         --out-dir ./
-
     # Rename output files with consistent prefix
     if [ -f "profile.tsv" ]; then
         mv profile.tsv ${prefix}.taxonomy.tsv
@@ -42,6 +42,7 @@ process GAPPA_ASSIGN {
         mv per_query.tsv ${prefix}.per_query.tsv
     fi
 
+    
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         gappa: \$(gappa --version 2>&1 | head -n 1 | sed 's/gappa version: //g')

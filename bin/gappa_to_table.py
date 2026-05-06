@@ -1,118 +1,89 @@
 #!/usr/bin/env python3
-import glob
-import re
-import os
+import glob, re, os
+from collections import defaultdict
+
+def get_taxon_name(taxopath):
+    parts = [p.strip() for p in taxopath.split(';') 
+             if p.strip() and p.strip().lower() not in ('fungi', 'taxopath')]
+    if not parts:
+        return None
+    last = parts[-1]
+    is_species = last[0].islower() or ' ' in last
+    if is_species:
+        return f"{parts[-2]}_{last.replace(' ', '_')}" if len(parts) > 1 else last
+    else:
+        return f"{last}_sp"
 
 def run():
-    # =========================================================
-    # 1. Carregar os dados de abundância do Mothur (.shared)
-    # =========================================================
-    shared_data = {}
-    for sf in glob.glob("results/**/*.shared", recursive=True):
-        sample = os.path.basename(sf).split('.')[0]
-        with open(sf, 'r') as f:
-            lines = f.readlines()
-            if len(lines) < 2:
-                continue
-            headers = lines[0].strip().split('\t')
-            values  = lines[1].strip().split('\t')
-            clean_headers = [re.sub(r'Otu0+', 'Otu', h) for h in headers[3:]]
-            shared_data[sample] = dict(zip(clean_headers, [int(x) for x in values[3:]]))
+    # Processa por amostra, mantendo OTU IDs separados
+    sample_taxa_counts = {}  # {sample: {taxon: count}}
+    all_taxa = set()
 
-    # =========================================================
-    # 2. Carregar o melhor hit taxonômico por OTU (.per_query.tsv)
-    # =========================================================
-    otu_best_hit = {}
-    for qf in glob.glob("results/**/*.per_query.tsv", recursive=True):
-        with open(qf, 'r') as f:
+    # Descobre amostras pelos shared files
+    for sf in glob.glob("*.shared"):
+        sample = os.path.basename(sf).split('.')[0]
+        
+        # Lê shared
+        with open(sf) as f:
             lines = f.readlines()
         if len(lines) < 2:
             continue
-
+        headers = lines[0].strip().split('\t')
+        otu_counts = {}
         for line in lines[1:]:
-            if not line.strip():
+            vals = line.strip().split('\t')
+            if len(vals) < 4:
                 continue
-            cols = line.strip().split('\t')
-            if len(cols) < 3:
-                continue
+            for h, v in zip(headers[3:], vals[3:]):
+                otu_id = re.sub(r'Otu0+', 'Otu', h)
+                otu_counts[otu_id] = otu_counts.get(otu_id, 0) + int(v)
 
-            q_name = cols[0]
-            lwr    = float(cols[1])
+        # Lê per_query da mesma amostra
+        qf = f"{sample}.per_query.tsv"
+        if not os.path.exists(qf):
+            continue
+        
+        otu_to_taxon = {}
+        with open(qf) as f:
+            for line in f.readlines()[1:]:
+                if not line.strip():
+                    continue
+                cols = line.strip().split('\t')
+                if len(cols) < 6:
+                    continue
+                q_name, lwr = cols[0], float(cols[1])
+                match = re.search(r'(Otu\d+)', q_name)
+                if not match:
+                    continue
+                otu_id = re.sub(r'Otu0+', 'Otu', match.group(1))
+                taxon = get_taxon_name(cols[-1])
+                if not taxon:
+                    continue
+                # Melhor LWR por OTU dentro da amostra
+                if otu_id not in otu_to_taxon or lwr > otu_to_taxon[otu_id][0]:
+                    otu_to_taxon[otu_id] = (lwr, taxon)
 
-            # Extrai o OTU ID diretamente do nome da sequência
-            # O nome vem do MAFFT como: UFRN_D7_..._Otu14_5...
-            match = re.search(r'(Otu\d+)', q_name)
-            if not match:
-                continue
+        # Soma reads por táxon para essa amostra
+        taxa_counts = defaultdict(int)
+        for otu_id, count in otu_counts.items():
+            if otu_id in otu_to_taxon:
+                taxon = otu_to_taxon[otu_id][1]
+                taxa_counts[taxon] += count
 
-            otu_id = re.sub(r'Otu0+', 'Otu', match.group(1))
+        sample_taxa_counts[sample] = taxa_counts
+        all_taxa.update(taxa_counts.keys())
 
-           # Guarda a taxonomia limpando os espaços
-            taxopath = cols[-1]
-            parts = [p.strip() for p in taxopath.split(';') 
-                     if p.strip() and p.strip().lower() != 'fungi']
-            
-            if parts:
-                current_depth = len(parts) # Mede quão profundo chegou (ex: Família=4, Espécie=6)
-                
-                # Pega os dados que já salvamos dessa OTU (ou zera se for a primeira vez)
-                stored_depth = otu_best_hit[otu_id]['depth'] if otu_id in otu_best_hit else 0
-                stored_lwr = otu_best_hit[otu_id]['lwr'] if otu_id in otu_best_hit else -1
+    all_taxa = sorted(all_taxa)
+    print(f"[INFO] Amostras processadas: {len(sample_taxa_counts)}")
+    print(f"[INFO] Táxons únicos: {len(all_taxa)}")
 
-                # LÓGICA "TIP-FIRST":
-                # Atualiza SE chegou mais fundo na árvore (maior depth)
-                # OU SE empatou na profundidade, mas tem uma certeza maior (LWR >)
-                if current_depth > stored_depth or (current_depth == stored_depth and lwr > stored_lwr):
-                    otu_best_hit[otu_id] = {
-                        'lwr'      : lwr,
-                        'depth'    : current_depth, # Precisamos salvar a profundidade para comparar!
-                        'taxon'    : parts[-1],
-                        'genus'    : parts[-2] if len(parts) > 1 else 'Unknown',
-                        'full_path': taxopath
-                    }
-
-    # =========================================================
-    # 3. Construir nomes finais para cada OTU
-    # =========================================================
-    final_otu_names    = {}
-
-    for otu_id, info in otu_best_hit.items():
-        last_rank = info['taxon']
-        # Heurística: se começa com minúscula ou tem espaço → é epíteto específico
-        is_species = last_rank[0].islower() or ' ' in last_rank
-
-        if is_species:
-            final_otu_names[otu_id] = f"{info['genus']}_{last_rank.replace(' ', '_')}"
-        else:
-            # Se não é espécie, usa o Nível + OTU ID (Ex: Dominikiaceae_Otu14)
-            final_otu_names[otu_id] = f"{last_rank}_{otu_id}"
-
-    # =========================================================
-    # O resto do script (4. Escrever a tabela) continua EXATAMENTE igual!
-    # =========================================================
-    # 4. Escrever a tabela final
-    # =========================================================
-    all_names = sorted(set(final_otu_names.values()))
-
-    # Diagnóstico rápido
-    matched   = sum(1 for otu in shared_data.get(next(iter(shared_data), ''), {})
-                    if otu in final_otu_names)
-    unmatched = sum(1 for otu in shared_data.get(next(iter(shared_data), ''), {})
-                    if otu not in final_otu_names)
-    print(f"[INFO] OTUs com hit taxonômico : {len(final_otu_names)}")
-    print(f"[INFO] Táxons únicos na tabela : {len(all_names)}")
-    print(f"[INFO] OTUs sem hit (ignorados) : {unmatched}")
-
-    with open('ALMA_OTU_abundance.tsv', 'w') as out:
-        out.write('\t'.join(['label', 'Group', 'numOtus'] + all_names) + '\n')
-        for sample in sorted(shared_data.keys()):
-            sums = {name: 0 for name in all_names}
-            for otu_id, count in shared_data[sample].items():
-                if otu_id in final_otu_names:
-                    sums[final_otu_names[otu_id]] += count
+    with open("ALMA_OTU_abundance.tsv", "w") as out:
+        out.write('\t'.join(['label', 'Group', 'numOtus'] + all_taxa) + '\n')
+        for sample in sorted(sample_taxa_counts.keys()):
+            counts = sample_taxa_counts[sample]
             out.write('\t'.join(
-                ['0.02', sample, str(len(all_names))] +
-                [str(sums[n]) for n in all_names]
+                ['0.02', sample, str(len(all_taxa))] +
+                [str(counts.get(t, 0)) for t in all_taxa]
             ) + '\n')
 
     print("[INFO] Tabela salva em ALMA_OTU_abundance.tsv")
