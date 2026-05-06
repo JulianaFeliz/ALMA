@@ -120,7 +120,7 @@ Use this for: Creating the circular trees with ggtree in R or vizualition on iTO
 ---
 ## 🧪 Downstream Analysis: Advanced Ecological Statistics
 
-This project includes a comprehensive, publication-ready R script (`scripts/ecological_analysis.R`) to perform advanced statistical ecology on your amplicon data. It bridges raw bioinformatic outputs with rigorous ecological theory, properly handling the compositional nature of microbiome datasets.
+This project includes a comprehensive, publication-ready R script (ALMA_ecology.R`) to perform advanced statistical ecology on your amplicon data. It bridges raw bioinformatic outputs with rigorous ecological theory, properly handling the compositional nature of microbiome datasets.
 
 ### 🌟 Features
 * **Data Exploration (DE):** Automated Rarefaction curves and Cleveland dotplots for sequencing depth saturation and outlier detection.
