@@ -70,7 +70,7 @@ You can customize the biological thresholds by adding these flags to your run co
 * **Filter by Length:** Use `--min_length 350` and `--max_length 600` if your amplicons are outside the standard LSU range.
    * This may be checked in by summary with this command: 
    ```bash
-mothur "#summary.seqs(fasta=your_sequences.fasta)
+  mothur "#summary.seqs(fasta=your_sequences.fasta)
    ```
 * **Clustering Identity:** Change `--cluster_cutoff 0.02` to group sequences at 98% similarity (default is 0.03 for 97%).
    * If you want to try the ASV approach, implement 0.00 for 100% clustering.
