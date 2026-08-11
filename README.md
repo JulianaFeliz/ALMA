@@ -200,7 +200,7 @@ ls -lh refs/
 # Should show:
 # 1806DB.ng.fasta
 # 1806DB.tax
-# 629ref_aln_cut.fasta
+# ALMAdb.fasta
 ```
 
 
