@@ -171,7 +171,7 @@ The script outputs high-quality PDFs and PNGs:
 
 If you use this pipeline in your research, please cite:
 
-Felix, JRB; Magurno, F; Queiroz, MB; Goto, BT; Lima, JPSM. ALMA - AMF LSU METABARCODING ANALYSIS. Refining Community Analysis: Strategies and Challenges for Environmental Metabarcoding of general fungi and specific recommendations on Glomeromycota phylum, 2026.  (UPDATE TO ARTICLE TITLE and DOI)
+Felix, JRB; Queiroz, MB; Goto, BT; Lima, JPSM. ALMA - AMF LSU METABARCODING ANALYSIS. Refining Community Analysis: Strategies and Challenges for Environmental Metabarcoding of general fungi and specific recommendations on Glomeromycota phylum, 2026.  (UPDATE TO ARTICLE TITLE and DOI)
  
  or also:
 * **Nextflow:** Di Tommaso, P., et al. (2017). *Nature Biotechnology*.
