@@ -1,8 +1,15 @@
 # 🍄 ALMA - AMF LSU METABARCODING ANALYSIS
 
-A reproducible and scalable **Nextflow DSL2** pipeline for analyzing arbuscular mycorrhizal fungi (AMF) amplicon sequences (LSU rDNA). Based on a curated database of AMF sequences 
+A reproducible and scalable **Nextflow DSL2** pipeline for analyzing arbuscular mycorrhizal fungi (AMF) amplicon sequences (LSU rDNA) that integrates **Mothur** for core sequence processing and **RAxML/GAPPA** for phylogenetic placement. ALMA is powered by a highly comprehensive and strictly curated reference database of AMF sequences, ensuring robust and precise taxonomic assignment. Our custom database covers the entirety of known AMF higher taxonomy, encompassing:
 
-This pipeline integrates **Mothur** for core sequence processing and **RAxML/GAPPA** for phylogenetic placement.
+* **🧬 739** High-quality sequences
+* **🍄 244** Species
+* **🫆 57** Genera: 
+   *Acaulospora, Albahypha, Albocarpum, Alborhynchus, Ambispora, Andinospora, Archaeospora, Blaszkowskia, Bulbospora, Cetraspora, Complexispora, Corymbiglomus,       Dentiscutata, Desertispora, Diversispora, Dominikia, Entrophospora, Epigeocarpum, Funneliformis, Funneliglomus, Fuscutata, Geosiphon, Gigaspora, Glomus,           Halonatospora, Innospora, Intraornatospora, Kamienskia, Macrodominikia, Melanocarpum, Microdominikia, Microkamienskia, Microviscospora, Nanoglomus, Oehlia,        Orbispora, Orientoglomus, Otospora, Pacispora, Palaeospora, Paracorymbiglomus, Paradentiscutata, Paraglomus, Pervetustus, Polonospora, Racocetra, Redeckera,       Rhizoglomus, Sacculospora, Sclerocarpum, Sclerocystis, Scutellospora, Septoglomus, Sieverdingia, Silvaspora, Tricispora, Viscospora.*
+* **🧩 25** Families *(representing all known AMF families)*
+* **👑 9** Orders *(representing all known AMF orders)*: 
+    *Glomerales, Diversisporales, Gigasporales, Acaulosporales, Entrophosporales, Pacisporales, Sacculosporales, Archaeosporales, and Paraglomerales.*
+
 
 ---
 
@@ -59,11 +66,10 @@ The default parameters
 
 ### ⚙️ Fine-tuning your Analysis
 You can customize the biological thresholds by adding these flags to your run command:
-
-* **Filter by Length:** Use `--min_length 350` and `--max_length 600` if your amplicons are outside the standard LSU range.
-   * This may be checked in by summary with this command: 
+**Filter by Length:** Use `--min_length 350` and `--max_length 600` if your amplicons are outside the standard LSU range. 
+*Tip: The optimal filtering range depends on your specific primer pair. If you have previously assembled your reads (e.g., using Mothur's `make.contigs`), you can check your exact amplicon size distribution using:*
    ```bash
-
+   mothur "#summary.seqs(fasta=your_file.contigs.fasta, count=your_file.contigs.count_table)"
    ```
 * **Clustering Identity:** Change `--cluster_cutoff 0.02` to group sequences at 98% similarity (default is 0.03 for 97%).
    * If you want to try the ASV approach, implement 0.00 for 100% clustering.
@@ -120,7 +126,7 @@ Use this for: Creating the circular trees with ggtree in R or vizualition on iTO
 ---
 ## 🧪 Downstream Analysis: Advanced Ecological Statistics
 
-This project includes a comprehensive, publication-ready R script (`scripts/ecological_analysis.R`) to perform advanced statistical ecology on your amplicon data. It bridges raw bioinformatic outputs with rigorous ecological theory, properly handling the compositional nature of microbiome datasets.
+This project includes a comprehensive, publication-ready R script (ALMA_ecology.R`) to perform advanced statistical ecology on your amplicon data. It bridges raw bioinformatic outputs with rigorous ecological theory, properly handling the compositional nature of microbiome datasets.
 
 ### 🌟 Features
 * **Data Exploration (DE):** Automated Rarefaction curves and Cleveland dotplots for sequencing depth saturation and outlier detection.
@@ -165,7 +171,7 @@ The script outputs high-quality PDFs and PNGs:
 
 If you use this pipeline in your research, please cite:
 
-Felix, JRB; Magurno, F; Queiroz, MB; Goto, BT; Lima, JPSM. ALMA - AMF LSU METABARCODING ANALYSIS. Refining Community Analysis: Strategies and Challenges for Environmental Metabarcoding of general fungi and specific recommendations on Glomeromycota phylum, 2026.  (UPDATE TO ARTICLE TITLE and DOI)
+Felix, JRB; Queiroz, MB; Goto, BT; Lima, JPSM. ALMA - AMF LSU METABARCODING ANALYSIS. Refining Community Analysis: Strategies and Challenges for Environmental Metabarcoding of general fungi and specific recommendations on Glomeromycota phylum, 2026.  (UPDATE TO ARTICLE TITLE and DOI)
  
  or also:
 * **Nextflow:** Di Tommaso, P., et al. (2017). *Nature Biotechnology*.
@@ -194,7 +200,7 @@ ls -lh refs/
 # Should show:
 # 1806DB.ng.fasta
 # 1806DB.tax
-# 629ref_aln_cut.fasta
+# ALMAdb.fasta
 ```
 
 
