@@ -1,7 +1,8 @@
 process MOTHUR_COUNT_SEQS {
     tag "$meta.id"
     label 'process_low'
-
+    memory '32 GB'
+    cpus '1'
     // Link do Galaxy Project
     container 'https://depot.galaxyproject.org/singularity/mothur:1.48.0--hb64bf22_1'
     

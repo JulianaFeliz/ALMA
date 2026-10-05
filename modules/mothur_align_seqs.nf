@@ -17,7 +17,7 @@ process MOTHUR_ALIGN_SEQS {
     script:
     def prefix = "${meta.id}"
     """
-    mothur "#align.seqs(fasta=${fasta}, reference=${reference}, processors=${task.cpus})"
+    mothur "#align.seqs(fasta=${fasta}, reference=${reference}, flip=T, processors=${task.cpus})"
     
     # Rename output files
     mv *align_report ${prefix}.align.report 2>/dev/null || true

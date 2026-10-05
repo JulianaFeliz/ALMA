@@ -1,51 +1,43 @@
 process MOTHUR_SCREEN_SEQS {
     tag "$meta.id"
     label 'process_low'
-
-    // Link do Galaxy Project
+    time '12h'
+    cpus 6
     container 'https://depot.galaxyproject.org/singularity/mothur:1.48.0--hb64bf22_1'
-    
+
     input:
-    tuple val(meta), path(fasta)
+    
+    tuple val(meta), path(fasta), path(count_file) 
     val min_length
     val max_length
     val max_ambig
     val max_homop
 
     output:
-    tuple val(meta), path("${meta.id}.good.*"), emit: seqs
+    
+    tuple val(meta), path("${meta.id}.good.*"), emit: seqs 
     tuple val(meta), path("${meta.id}.bad.accnos"), emit: bad_seqs, optional: true
     path "versions.yml", emit: versions
 
     script:
-    def length_args = (min_length != null && max_length != null) ?
-        "minlength=${min_length}, maxlength=${max_length}" : ""
-    def ambig_args = (max_ambig != null) ? "maxambig=${max_ambig}" : ""
-    def homop_args = (max_homop != null) ? "maxhomop=${max_homop}" : ""
-
-    def all_args = [length_args, ambig_args, homop_args]
-        .findAll { arg -> arg != "" }
-        .join(", ")
-
     """
-    # Run Mothur screen.seqs
-    mothur "#screen.seqs(fasta=${fasta}, ${all_args}, processors=${task.cpus})"
+    mothur "#screen.seqs(fasta=${fasta}, count=${count_file}, maxambig=${max_ambig}, minlength=${min_length}, maxlength=${max_length}, maxhomop=${max_homop}, processors=${task.cpus})"
 
-    # Rename outputs ONLY if the name doesn't match expected pattern
-    # Handle both .fasta and .align extensions
+    # Renomear saídas
     if [ -f *.good.fasta ] && [ ! -f ${meta.id}.good.fasta ]; then
         mv *.good.fasta ${meta.id}.good.fasta
     fi
+
     
-    if [ -f *.good.align ] && [ ! -f ${meta.id}.good.align ]; then
-        mv *.good.align ${meta.id}.good.align
+    # Se for count_table
+    if [ -f *.good.count_table ] && [ ! -f ${meta.id}.good.count_table ]; then
+        mv *.good.count_table ${meta.id}.good.count_table
     fi
 
     if [ -f *.bad.accnos ] && [ ! -f ${meta.id}.bad.accnos ]; then
         mv *.bad.accnos ${meta.id}.bad.accnos
     fi
 
-    # Generate versions file
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         mothur: \$(mothur --version 2>&1 | sed 's/^.*v\\.//; s/\\..*\$//')

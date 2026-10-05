@@ -6,7 +6,7 @@ process MOTHUR_CLUSTER {
 
     // Link do Galaxy Project
     container 'https://depot.galaxyproject.org/singularity/mothur:1.48.0--hb64bf22_1'
-    
+
     input:
     tuple val(meta), path(fasta), path(count_table)
     val cutoff
