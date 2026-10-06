@@ -1,7 +1,7 @@
 // --- MODULES/RAXML_EPA.NF ---
 
 process RAXML_EVALUATE {
-    tag "$meta.id"
+    tag "Global_Tree"
     cpus 8
     memory '16 GB'
 
@@ -11,21 +11,30 @@ process RAXML_EVALUATE {
     container 'https://depot.galaxyproject.org/singularity/raxml-ng:1.2.2--h6747034_1'
 
     input:
-    tuple val(meta), path(msa)
-    path tree
-    path reference_aln
+    path msa          // O alinhamento único gerado pelo MAFFT
+    path tree         // A árvore do ALMAdb
+    path reference_aln // O alinhamento de referência do ALMAdb
 
     output:
-    // Nós já passamos os arquivos separados adiante para ganhar tempo!
-    tuple val(meta), path("ref_eval.raxml.bestModel"), path("ref_only.fasta"), path("query_only.fasta"), emit: prep_data
+    path "ref_eval.raxml.bestModel", emit: best_model
+    path "ref_only.fasta", emit: ref_only
+    path "query_only.fasta", emit: query_only
 
     script:
     """
-    # 1. Separar Queries e Referências (Agora buscando pelo ID da Amostra em vez de Q_)
-    awk '/^>${meta.id}_/{p=1} /^>/ && !/^>${meta.id}_/{p=0} p{print}' ${msa} > query_only.fasta
-    awk 'BEGIN{p=1} /^>${meta.id}_/{p=0} /^>/ && !/^>${meta.id}_/{p=1} p{print}' ${msa} > ref_only.fasta
+    # 1. Separar Queries e Referências de forma universal e segura
+    # A) Extrai apenas os nomes dos cabeçalhos do seu alinhamento de referência
+    grep "^>" ${reference_aln} | cut -d ' ' -f 1 > ref_headers.txt
+
+    # B) Usa AWK para varrer o MSA do MAFFT. O que NÃO estiver na lista de referências, é OTU (Query).
+    # Este script funciona perfeitamente mesmo que as sequências FASTA tenham múltiplas linhas.
+    awk 'NR==FNR{refs[\$1]; next} /^>/{keep= !(\$1 in refs)} keep' ref_headers.txt ${msa} > query_only.fasta
+
+    # C) A referência (ALMAdb) já está perfeitamente alinhada e com as dimensões corretas da árvore.
+    cp ${reference_aln} ref_only.fasta
 
     # 2. Avaliar parâmetros do modelo na árvore de referência
+    # Como as referências são as mesmas, ele avalia super rápido.
     raxml-ng --evaluate \\
              --msa ref_only.fasta \\
              --tree ${tree} \\
@@ -36,24 +45,28 @@ process RAXML_EVALUATE {
 }
 
 process EPA_NG_PLACEMENT {
-    tag "$meta.id"
+    tag "Global_Placement"
     cpus 8
-    memory '16 GB'
+    memory '32 GB' // Aumentamos a RAM, pois EPA-ng exige memória para o projeto global
+
+    publishDir "${params.outdir}/raxml_results", mode: 'copy'
 
     // Bolha 2: Exclusiva do EPA-ng
     container 'https://depot.galaxyproject.org/singularity/epa-ng:0.3.8--h9a82719_1'
 
     input:
-    tuple val(meta), path(bestModel), path(ref_only), path(query_only)
+    path bestModel
+    path ref_only
+    path query_only
     path tree
 
     output:
-    tuple val(meta), path("${meta.id}.jplace"), emit: jplace
+    path "global_placement.jplace", emit: jplace
     path "versions.yml", emit: versions
 
     script:
     """
-    # 3. EPA-ng Placement (Lendo os dados que saíram da Bolha 1)
+    # 3. EPA-ng Placement (Lendo os dados globais que saíram da Bolha 1)
     epa-ng --tree ${tree} \\
            --ref-msa ${ref_only} \\
            --query ${query_only} \\
@@ -62,8 +75,8 @@ process EPA_NG_PLACEMENT {
            --redo \\
            --threads ${task.cpus}
     
-    # 4. Finalizar
-    mv epa_result.jplace ${meta.id}.jplace
+    # 4. Finalizar renomeando para o padrão global
+    mv epa_result.jplace global_placement.jplace
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -72,16 +85,24 @@ process EPA_NG_PLACEMENT {
     """
 }
 
-// 5. A Mágica: Este bloco engana o main.nf e faz ele achar que é um processo só!
+// 5. 
 workflow RAXML_EPA {
     take:
-        msa_ch
+        msa
         tree
         ref_aln
 
     main:
-        RAXML_EVALUATE(msa_ch, tree, ref_aln)
-        EPA_NG_PLACEMENT(RAXML_EVALUATE.out.prep_data, tree)
+        // Avalia o modelo baseado na referência
+        RAXML_EVALUATE(msa, tree, ref_aln)
+        
+        // Faz o posicionamento das OTUs globais na árvore
+        EPA_NG_PLACEMENT(
+            RAXML_EVALUATE.out.best_model,
+            RAXML_EVALUATE.out.ref_only,
+            RAXML_EVALUATE.out.query_only,
+            tree
+        )
 
     emit:
         jplace = EPA_NG_PLACEMENT.out.jplace

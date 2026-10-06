@@ -1,5 +1,5 @@
 process GAPPA_ASSIGN {
-    tag "${meta.id}"
+    tag "Global_Taxonomy"
     label 'process_low'
 
     // Link do Galaxy Project
@@ -8,19 +8,19 @@ process GAPPA_ASSIGN {
     publishDir "${params.outdir}/gappa_results", mode: 'copy'    
 
     input:
-    tuple val(meta), path(jplace)
-    path taxonomy_file
-    val lwr_threshold
+    path jplace          // Recebe global_placement.jplace direto do RAXML
+    path taxonomy_file   // params.taxonomy_ALMA
+    val lwr_threshold    // params.gappa_lwr_threshold
 
     output:
-    tuple val(meta), path("*.taxonomy.tsv"), emit: taxonomy
-    tuple val(meta), path("*.profile.tsv"), emit: profile, optional: true
-    tuple val(meta), path("*.per_query.tsv"), emit: per_query, optional: true
+    path "global.taxonomy.tsv", emit: taxonomy
+    path "global.per_query.tsv", emit: per_query
+    path "global.krona.txt", optional: true
     path "versions.yml", emit: versions
 
     script:
-    def prefix = "${meta.id}"
     """
+    # Adicionada a flag --lwr-cutoff que estava faltando no seu comando original!
     gappa examine assign \\
         --jplace-path ${jplace} \\
         --taxon-file ${taxonomy_file} \\
@@ -28,20 +28,23 @@ process GAPPA_ASSIGN {
         --krona \\
         --sativa \\
         --best-hit \\
+        --lwr-cutoff ${lwr_threshold} \\
         --consensus-thresh 0.5 \\
         --resolve-missing-paths \\
         --out-dir ./
-    # Rename output files with consistent prefix
+
+    # Renomear os arquivos para o padrão global de forma elegante
     if [ -f "profile.tsv" ]; then
-        mv profile.tsv ${prefix}.taxonomy.tsv
-    elif [ -f "${prefix}.profile.tsv" ]; then
-        cp ${prefix}.profile.tsv ${prefix}.taxonomy.tsv
+        mv profile.tsv global.taxonomy.tsv
     fi
 
     if [ -f "per_query.tsv" ]; then
-        mv per_query.tsv ${prefix}.per_query.tsv
+        mv per_query.tsv global.per_query.tsv
     fi
-
+    
+    if [ -f "krona.txt" ]; then
+        mv krona.txt global.krona.txt
+    fi
     
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
